@@ -7,7 +7,7 @@ const Registry = require("./model/registry")
 const utils = require('./model/utils')
 
 const Chaincode = class {
-    async Init(stub) {
+    async Init() {
         console.log("============= INIT SUCCESSFUL =============");
         return shim.success()
     }

@@ -16,6 +16,13 @@ const Dealer = class {
      */
 
     static async createCar(stub, args) {
+        // === Getting User Certificate === 
+        let dealerCertificate = utils.getCertificate(stub)
+        console.log("######", dealerCertificate)
+
+        // === Verifying User's Permissions === 
+        if (dealerCertificate.org != "Org1MSP") throw new Error(`User ${dealerCertificate.name} from ${dealerCertificate.org} does not have access authority for this transaction!`)
+
         // === Checking for full array ===
         if (args.length !== 8) throw new Error("Asset must have all 8 arguments defined")
         if (args[0].length <= 0) throw new Error("1st argument must be filled!")
@@ -28,7 +35,7 @@ const Dealer = class {
         if (args[7].length <= 0) throw new Error("8th argument must be filled!")
 
         // === Formatting Variables ===
-        let plate = args[0].toUpperCase().replace(/[^a-z0-9]/gi,'')
+        let plate = args[0].toUpperCase().replace(/[^a-z0-9]/gi, '')
         let mileage = parseFloat(args[4].replace(/[^\d.]/g, ''))
         let price = parseFloat(args[5].replace(/[^\d.]/g, ''))
         let owner = args[6].replace(/\D/g, '')
@@ -43,10 +50,6 @@ const Dealer = class {
         let existence = await stub.getState(plate)
         if (existence && existence.length > 0) throw new Error("This asset already exists!")
 
-        // === Getting Dealer Certificate === 
-        let dealerCertificate = utils.getCertificate(stub)
-        console.log("######", dealerCertificate)
-
         // === Creating Object ===
         let car = {
             plate: plate,
@@ -56,14 +59,14 @@ const Dealer = class {
             mileage: mileage,
             price: price,
             status: "OWNED",
-            dealerResponsible: dealerCertificate,
+            dealerResponsible: dealerCertificate.name + "#" + dealerCertificate.org,
             owner: owner,
             new_owner: new_owner
         }
 
         // === Saving Asset in the Blockchain ===
-        await stub.putState(plate, Buffer.from(JSON.stringify({car: car})))
-        console.info("Car created successfully!")
+        await stub.putState(plate, Buffer.from(JSON.stringify({ car: car })))
+        console.info("--- Car created successfully! ---")
 
         return Buffer.from(JSON.stringify(plate))
     }
@@ -76,32 +79,35 @@ const Dealer = class {
      */
 
     static async offerCar(stub, args) {
+        // === Getting User Certificate ===
+        let dealerCertificate = utils.getCertificate(stub)
+        console.info("######", dealerCertificate)
+
+        // === Verifying User's Permissions === 
+        if (dealerCertificate.org != "Org1MSP") throw new Error(`User ${dealerCertificate.name} from ${dealerCertificate.org} does not have access authority for this transaction!`)
+
         // === Formatting Plate Number ===        
-        let plate = args[0].toUpperCase().replace(/[^a-z0-9]/gi,'')
+        let plate = args[0].toUpperCase().replace(/[^a-z0-9]/gi, '')
 
         // === Checking for full array ===
-        if (plate.length <= 0 || plate.length !== 7 || plate == undefined || plate == null) throw new Error ("Invalid Car Plate!")
+        if (plate.length !== 7 || plate == undefined || plate == null) throw new Error("Invalid Car Plate!")
 
         // === Checking if asset exists ===
         let asset = await stub.getState(plate)
         if (!asset || asset.length <= 0) throw new Error("Asset does not exist!")
 
-        // === Getting the dealer Certificate ===
-        let dealerCertificate = utils.getCertificate(stub)
-        console.info("######", dealerCertificate)
-
         // === Checking if dealer is authorized to execute this transaction ===
         asset = JSON.parse(asset.toString())
-        if (asset.car.dealerResponsible !== dealerCertificate) throw new Error ("This dealer does not have permission to operate that transaction!")
+        if (asset.car.dealerResponsible !== dealerCertificate.name + "#" + dealerCertificate.org) throw new Error("This dealer does not have permission to operate that transaction!")
 
         // === Checking if the car can be offered for insurance check ===
-        if (asset.car.status !== "OWNED") throw new Error ("This car cannot be offered to Insurance Check")
+        if (asset.car.status !== "OWNED") throw new Error("This car cannot be offered to Insurance Check")
 
         asset.car.status = "BEING_AVALIATED_BY_INSURER"
 
         // === Updating Asset in the Blockchain ===
         await stub.putState(plate, Buffer.from(JSON.stringify(asset)))
-        console.log("Asset updated successfully!")
+        console.log("--- Asset updated successfully! ---")
 
         return Buffer.from(JSON.stringify(plate))
 
@@ -114,26 +120,29 @@ const Dealer = class {
      */
 
     static async transferCar(stub, args) {
+        // === Getting the dealer Certificate ===
+        let dealerCertificate = utils.getCertificate(stub)
+        console.info("######", dealerCertificate)
+
+        // === Verifying User's Permissions === 
+        if (dealerCertificate.org != "Org1MSP") throw new Error(`User ${dealerCertificate.name} from ${dealerCertificate.org} does not have access authority for this transaction!`)
+
         // === Formatting Plate Number ===
-        let plate = args[0].toUpperCase().replace(/[^a-z0-9]/gi,'')
+        let plate = args[0].toUpperCase().replace(/[^a-z0-9]/gi, '')
 
         // === Checking for full array ===
-        if (plate.length <= 0 || plate.length !== 7 || plate == undefined || plate == null) throw new Error ("Invalid Car Plate!")
+        if (plate.length !== 7 || plate == undefined || plate == null) throw new Error("Invalid Car Plate!")
 
         // === Checking if asset exists ===
         let asset = await stub.getState(plate)
         if (!asset || asset.length <= 0) throw new Error("Asset does not exist!")
 
-        // === Getting the dealer Certificate ===
-        let dealerCertificate = utils.getCertificate(stub)
-        console.info("######", dealerCertificate)
-
         // === Checking if dealer is authorized to execute this transaction ===
         asset = JSON.parse(asset.toString())
-        if (asset.car.dealerResponsible !== dealerCertificate) throw new Error ("This dealer does not have permission to operate that transaction!")
+        if (asset.car.dealerResponsible !== dealerCertificate.name + "#" + dealerCertificate.org) throw new Error("This dealer does not have permission to operate that transaction!")
 
         // === Checking if the car can be transfered ===
-        if (asset.car.status !== "READY_FOR_TRANSFERSHIP") throw new Error ("This car cannot be transfered!")
+        if (asset.car.status !== "READY_FOR_TRANSFERSHIP") throw new Error("This car cannot be transfered!")
 
         asset.car.status = "OWNED"
         asset.car.owner = asset.car.new_owner
@@ -143,7 +152,7 @@ const Dealer = class {
 
         // === Updating Asset in the Blockchain ===
         await stub.putState(plate, Buffer.from(JSON.stringify(asset)))
-        console.log("Asset updated successfully!")
+        console.log("--- Asset updated successfully! ---")
 
         return Buffer.from(JSON.stringify(plate))
     }

@@ -7,7 +7,10 @@ class Utils {
         let cert = clientIdentity.getX509Certificate()
         let org = clientIdentity.getMSPID()
         if (cert.subject.commonName && org){
-            return cert.subject.commonName + "#" + org
+            return {
+                name: cert.subject.commonName,
+                org: org
+            }
         }
 
         return null
