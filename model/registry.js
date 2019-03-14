@@ -1,13 +1,21 @@
 const utils = require("./utils")
 
 const Registry = class {
-
+    
     static async carBackgroundCheck(stub, args) {
+        // === Getting Insurer Certificate ===
+        let registryCertificate = utils.getCertificate(stub)
+        console.info("######", registryCertificate)
+        
+        // === Checking Certificate ===
+        if (registryCertificate.org !== "Org3MSP") throw new Error ("Invalid certificate! This member does not have permission to execute this transaction!")
+
         // === Formatting Plate Number ===        
         let plate = args[0].toUpperCase().replace(/[^a-z0-9]/gi,'')
 
         // === Checking Parameters ===
-        if (plate.length <= 0 || plate.length !== 7 || plate == undefined || plate == null) throw new Error ("Invalid Car Plate!")
+        if (args.length != 2) throw new Error("Invalid number of arguments!")
+        if (plate.length !== 7 || plate == undefined || plate == null) throw new Error ("Invalid Car Plate!")
         if (args[1].length <= 0) throw new Error("Invalid Background Check format!")
 
         // === Checking if asset exists ===
@@ -21,13 +29,6 @@ const Registry = class {
 
         asset.car.status = "READY_FOR_TRANSFERSHIP"
 
-        // === Getting Insurer Certificate ===
-        let registryCertificate = utils.getCertificate(stub)
-        console.info("######", registryCertificate)
-
-        // === Checking Certificate ===
-        if (registryCertificate.substring(registryCertificate.indexOf("#") + 1) !== "Org1MSP") throw new Error ("Invalid certificate! This member does not have permission to execute this transaction!")
-
         // === Creating Object ===
         let new_asset = {
             car: asset.car,
@@ -37,14 +38,14 @@ const Registry = class {
             },
             registryAnalysis: {
                 background_check: background_check,
-                registryAnalysis: registryCertificate
+                registryAnalysis: registryCertificate.name + "#" + registryCertificate.org
             }
         }
 
 
         // === Updating Asset in the Blockchain ===
         await stub.putState(asset.car.plate, Buffer.from(JSON.stringify(new_asset)))
-        console.log("Asset updated successfully!")
+        console.log("--- Asset updated successfully! ---")
 
         return Buffer.from(JSON.stringify(asset.car.plate))
     }
